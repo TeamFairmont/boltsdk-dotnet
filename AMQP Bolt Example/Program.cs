@@ -16,15 +16,13 @@ namespace AMQP_Bolt_Test_Console
         
         static void Main(string[] args)
         {
-            Console.Write("Enter AMQP IP: ");
-            var ip = Console.ReadLine();
-            if (ip == "")
-                ip = "192.168.254.3";
+            var mqurl = "amqp://username:password@localhost:5672/";  // For production, change to amqps://username:password@ipaddress:5671/
+            Console.Write("MQ URL = " + mqurl + "\n");
 
             //connect
             try
             {
-                var factory = new ConnectionFactory() { Uri = "amqp://guest:guest@" + ip };
+                var factory = new RabbitMQ.Client.ConnectionFactory() { Uri = mqurl };
                 using (var connection = factory.CreateConnection())
                 using (var channel = WorkerTools.CreateChannel(connection))
                 {
@@ -50,7 +48,7 @@ namespace AMQP_Bolt_Test_Console
                             //do work
                             if (ea.RoutingKey == "parseKeywords")
                             {
-                                var html = payload.SelectToken("return_value.html").ToString();
+                                var html = payload.SelectToken("initial_input.html").ToString();
 
                                 Console.WriteLine(" [x] Received HTML: " + html);
 
