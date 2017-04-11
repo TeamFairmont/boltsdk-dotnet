@@ -46,6 +46,13 @@ namespace BoltSDK
             {
                 consumer = new QueueingBasicConsumer(channel);
             }
+            channel.QueueDeclare(
+                queue: cmdName,
+                durable: true,
+                exclusive: false,
+                autoDelete: false,
+                arguments: null
+            );
             channel.BasicConsume(queue: cmdName, noAck: false, consumer: consumer);
             return consumer;
         }
