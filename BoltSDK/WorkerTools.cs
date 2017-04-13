@@ -17,47 +17,59 @@ namespace BoltSDK
     /// </summary>
     public class WorkerTools
     {
-
+        /// <summary>
+        ///  RunWorker takes a command name, a worker function, and a channel
+        ///  
+        /// </summary>
         public static void RunWork(string cmd, Func<JObject, JObject> workerFunc, IModel channel)
-        {
-            var consumer = ConsumeCommand(cmd, channel);
-            while (true)
-            {
-                var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
-                Task t = Task.Run(() =>
+        {  
+            //Start outer task, so the while loop does not block
+            Task outerTask = Task.Run(()=> { 
+                //prepare consumer to recieve from the queue
+                var consumer = ConsumeCommand(cmd, channel);
+                //infinate loop, to keep doing work!
+                while (true)
                 {
-                    try
+                    // Dequeue, get ea, the event args from the queue
+                    // will block if nothing on the queue
+                    var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
+                    // Start inner task so the work doesn't block
+                    Task t = Task.Run(() =>
                     {
-                        Console.WriteLine("thread beginning");
-                        var payload = WorkerTools.StartWork(ea);
                         try
                         {
-                            if (ea.RoutingKey == "messageDotNet")
+                            Console.WriteLine("thread beginning");
+                            // get the payload from ea, the queue's event arguments
+                            var payload = StartWork(ea);
+                            try
                             {
-                                workerFunc(payload);
+                                // check that the routing key matches the command
+                                //TODO may not be necisary 
+                                if (ea.RoutingKey == cmd)
+                                {
+                                    //run the passed in worker function
+                                    workerFunc(payload);
+                                }
+                                //TODO for testing
+                                Thread.Sleep(500);
                             }
-                            else if (ea.RoutingKey == "fetchPage")
+                            catch (Exception err)
                             {
-                                payload["return_value"]["html"] = "C# Worker Page Content";
+                                Console.WriteLine("[x] Error: " + err.ToString());
                             }
-                            Thread.Sleep(500);
+                            finally
+                            {
+                                FinishWork(channel, ea, payload);
+                            }
+                            Console.WriteLine("thread ending");
                         }
                         catch (Exception err)
                         {
-                            Console.WriteLine("[x] Error: " + err.ToString());
+                            Console.WriteLine("MQ Connection error: " + err.ToString());
                         }
-                        finally
-                        {
-                            FinishWork(channel, ea, payload);
-                        }
-                        Console.WriteLine("thread ending");
-                    }
-                    catch (Exception err)
-                    {
-                        Console.WriteLine("MQ Connection error: " + err.ToString());
-                    }
-                });
-            };
+                    });
+                };
+            });
         }
 
         /// <summary>
