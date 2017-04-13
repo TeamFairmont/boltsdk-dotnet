@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 using Newtonsoft.Json.Linq;
 using RabbitMQ.Client.Events;
@@ -16,6 +17,49 @@ namespace BoltSDK
     /// </summary>
     public class WorkerTools
     {
+
+        public static void RunWork(string cmd, Func<JObject, JObject> workerFunc, IModel channel)
+        {
+            var consumer = ConsumeCommand(cmd, channel);
+            while (true)
+            {
+                var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
+                Task t = Task.Run(() =>
+                {
+                    try
+                    {
+                        Console.WriteLine("thread beginning");
+                        var payload = WorkerTools.StartWork(ea);
+                        try
+                        {
+                            if (ea.RoutingKey == "messageDotNet")
+                            {
+                                workerFunc(payload);
+                            }
+                            else if (ea.RoutingKey == "fetchPage")
+                            {
+                                payload["return_value"]["html"] = "C# Worker Page Content";
+                            }
+                            Thread.Sleep(500);
+                        }
+                        catch (Exception err)
+                        {
+                            Console.WriteLine("[x] Error: " + err.ToString());
+                        }
+                        finally
+                        {
+                            FinishWork(channel, ea, payload);
+                        }
+                        Console.WriteLine("thread ending");
+                    }
+                    catch (Exception err)
+                    {
+                        Console.WriteLine("MQ Connection error: " + err.ToString());
+                    }
+                });
+            };
+        }
+
         /// <summary>
         /// CreateChannel takes an active MQ connection, and setups up
         /// a new channel with default bolt QoS settings 
@@ -30,7 +74,7 @@ namespace BoltSDK
                 autoDelete: false,
                 arguments: null
             );
-            channel.BasicQos(0, 1, false);
+            channel.BasicQos(0, 10, false);
 
             return channel;
         }
