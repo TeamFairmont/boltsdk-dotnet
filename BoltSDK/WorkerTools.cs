@@ -50,8 +50,6 @@ namespace BoltSDK
                                     //run the passed in worker function
                                     workerFunc(payload);
                                 }
-                                //TODO for testing
-                                Thread.Sleep(500);
                             }
                             catch (Exception err)
                             {
@@ -86,7 +84,7 @@ namespace BoltSDK
                 autoDelete: false,
                 arguments: null
             );
-            channel.BasicQos(0, 10, false);
+            channel.BasicQos(0, 1, false);
 
             return channel;
         }
