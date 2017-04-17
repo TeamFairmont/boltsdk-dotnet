@@ -18,56 +18,58 @@ namespace BoltSDK
     public class WorkerTools
     {
         /// <summary>
-        ///  RunWorker takes a command name, a worker function, and a channel
-        ///  
+        ///  RunWorker takes a command name, a worker function, and a connection
         /// </summary>
-        public static void RunWork(string cmd, Func<JObject, JObject> workerFunc, IModel channel)
-        {  
-            //Start outer task, so the while loop does not block
-            Task outerTask = Task.Run(()=> { 
-                //prepare consumer to recieve from the queue
-                var consumer = ConsumeCommand(cmd, channel);
-                //infinate loop, to keep doing work!
-                while (true)
+        public static void RunWork(string cmd, Func<JObject, JObject> workerFunc, IConnection connection)
+        {
+            //Start outer task, so the while loop does not block the next worker
+            Task outerTask = Task.Run(()=> {
+                //create a disposable channel, limited to this scope
+                using (var channel = CreateChannel(connection))
                 {
-                    // Dequeue, get ea, the event args from the queue
-                    // will block if nothing on the queue
-                    var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
-                    // Start inner task so the work doesn't block
-                    Task t = Task.Run(() =>
+                    //prepare consumer to recieve from the queue
+                    var consumer = ConsumeCommand(cmd, channel);
+                    //infinate loop, to keep doing work!
+                    while (true)
                     {
-                        try
+                        // Dequeue, get ea, the event args from the queue
+                        // will block if nothing on the queue
+                        var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
+                        // Start inner task so the work doesn't block
+                        Task t = Task.Run(() =>
                         {
-                            Console.WriteLine("thread beginning");
-                            // get the payload from ea, the queue's event arguments
-                            var payload = StartWork(ea);
                             try
                             {
+                            // get the payload from ea, the queue's event arguments
+                            var payload = StartWork(ea);
+                                try
+                                {
                                 // check that the routing key matches the command
                                 //TODO may not be necisary 
                                 if (ea.RoutingKey == cmd)
-                                {
+                                    {
                                     //run the passed in worker function
                                     workerFunc(payload);
+                                    }
+                                }
+                                catch (Exception err)
+                                {
+                                    Console.WriteLine("[x] Error: " + err.ToString());
+                                }
+                                finally
+                                {
+                                    FinishWork(channel, ea, payload);
                                 }
                             }
                             catch (Exception err)
                             {
-                                Console.WriteLine("[x] Error: " + err.ToString());
+                                Console.WriteLine("MQ Connection error: " + err.ToString());
                             }
-                            finally
-                            {
-                                FinishWork(channel, ea, payload);
-                            }
-                            Console.WriteLine("thread ending");
-                        }
-                        catch (Exception err)
-                        {
-                            Console.WriteLine("MQ Connection error: " + err.ToString());
-                        }
-                    });
-                };
-            });
+                        });//end of inner task
+                    };//end while
+                }//end using
+            });//end of outer task
+            Console.WriteLine("worker started: "+cmd);
         }
 
         /// <summary>
@@ -84,7 +86,7 @@ namespace BoltSDK
                 autoDelete: false,
                 arguments: null
             );
-            channel.BasicQos(0, 1, false);
+            channel.BasicQos(0, 10, false);
 
             return channel;
         }
