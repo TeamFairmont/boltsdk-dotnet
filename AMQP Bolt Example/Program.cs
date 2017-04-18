@@ -53,7 +53,7 @@ namespace ConsoleApp2
             msg.Add("Important Infomation2");
             payload["return_value"]["ImparativeReaction"] = new JArray(msg.ToArray());
 
-            Thread.Sleep(rand.Next(10, 1000));
+            Thread.Sleep(rand.Next(10, 100));
             Console.WriteLine("id: " + payload["id"]);
             Console.WriteLine("call_in: " + payload["call_in"]);
             Console.WriteLine(payload["return_value"]);

@@ -40,23 +40,17 @@ namespace BoltSDK
                         {
                             try
                             {
-                            // get the payload from ea, the queue's event arguments
-                            var payload = StartWork(ea);
+                                // get the payload from ea, the queue's event arguments
+                                var payload = StartWork(ea);
                                 try
                                 {
-                                // check that the routing key matches the command
-                                //TODO may not be necisary 
-                                if (ea.RoutingKey == cmd)
-                                    {
-                                    //run the passed in worker function
                                     workerFunc(payload);
-                                    }
                                 }
                                 catch (Exception err)
                                 {
                                     Console.WriteLine("[x] Error: " + err.ToString());
                                 }
-                                finally
+                                finally//when finished run the FinishWork command to send acknowledgement to the queue and clean up
                                 {
                                     FinishWork(channel, ea, payload);
                                 }
