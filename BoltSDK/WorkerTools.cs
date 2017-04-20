@@ -13,7 +13,7 @@ namespace BoltSDK
 {
     /// <summary>
     ///  WorkerTools contains functions to make connecting to an MQ 
-    ///  and registering bolt commands simple and consistent.
+    ///  and registering Bolt commands simple and consistent.
     /// </summary>
     public class WorkerTools
     {
@@ -22,25 +22,25 @@ namespace BoltSDK
         /// </summary>
         public static void RunWork(string cmd, Func<JObject, JObject> workerFunc, IConnection connection)
         {
-            //Start outer task, so the while loop does not block the next worker
+            // Start outer task, so the while loop does not block the next worker
             Task outerTask = Task.Run(()=> {
-                //create a disposable channel, limited to this scope
+                // Create a disposable channel, limited to this scope
                 using (var channel = CreateChannel(connection))
                 {
-                    //prepare consumer to recieve from the queue
+                    // Prepare the consumer to recieve messages from the queue
                     var consumer = ConsumeCommand(cmd, channel);
-                    //infinate loop, to keep doing work!
+                    // Infinite loop
                     while (true)
                     {
-                        // Dequeue, get ea, the event args from the queue
-                        // will block if nothing on the queue
+                        // Dequeue (retrieve messages from the queue), and get ea (event args) for processing.
+                        // Block if nothing is on the queue.
                         var ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
                         // Start inner task so the work doesn't block
                         Task t = Task.Run(() =>
                         {
                             try
                             {
-                                // get the payload from ea, the queue's event arguments
+                                // Get the payload from ea, the queue's event arguments
                                 var payload = StartWork(ea);
                                 try
                                 {
@@ -50,7 +50,7 @@ namespace BoltSDK
                                 {
                                     Console.WriteLine("[x] Error: " + err.ToString());
                                 }
-                                finally//when finished run the FinishWork command to send acknowledgement to the queue and clean up
+                                finally // when finished run the FinishWork command to send acknowledgement to the queue and clean up
                                 {
                                     FinishWork(channel, ea, payload);
                                 }
@@ -59,16 +59,16 @@ namespace BoltSDK
                             {
                                 Console.WriteLine("MQ Connection error: " + err.ToString());
                             }
-                        });//end of inner task
-                    };//end while
-                }//end using
-            });//end of outer task
+                        }); // end of inner task
+                    }; // end while
+                } // end using
+            }); // end of outer task
             Console.WriteLine("worker started: "+cmd);
         }
 
         /// <summary>
-        /// CreateChannel takes an active MQ connection, and setups up
-        /// a new channel with default bolt QoS settings 
+        /// CreateChannel takes an active MQ connection, and sets up
+        /// a new channel with default Bolt QoS settings 
         /// </summary>
         public static IModel CreateChannel(IConnection con)
         {
@@ -86,9 +86,9 @@ namespace BoltSDK
         }
 
         /// <summary>
-        ///  ConsumeCommand registers a command name to process with the current channel.
-        ///  If no consumer is passed, a new one will be created. Otherwise, the command
-        ///  will be added to the existing consumer.
+        ///  ConsumeCommand registers a command name to process using the current channel.
+        ///  If no consumer is passed, a new one will be created.
+        ///   Otherwise, the command will be added to the existing consumer.
         /// </summary>
         public static QueueingBasicConsumer ConsumeCommand(string cmdName, IModel channel, QueueingBasicConsumer consumer = null )
         {
@@ -108,8 +108,8 @@ namespace BoltSDK
         }
 
         /// <summary>
-        ///  StartWork sets up, verifies, and returns the bolt payload for this 
-        ///  command. It should be called immediately following consumer.Queue.Dequeue()
+        ///  StartWork sets up, verifies, and returns the Bolt payload for this command.
+        ///  It should be called immediately following consumer.Queue.Dequeue()
         /// </summary>
         public static JObject StartWork(BasicDeliverEventArgs ea)
         {
@@ -121,8 +121,8 @@ namespace BoltSDK
         }
 
         /// <summary>
-        ///  FinishWork verifies the new payload and sends it back up to the bolt engine.
-        ///  This needs to be called after all work is done for the current command.
+        ///  FinishWork verifies the new payload and sends it back up to the Bolt engine.
+        ///  This needs to be called after all work is completed for the current command.
         /// </summary>
         public static void FinishWork(IModel channel, BasicDeliverEventArgs ea, JObject payload)
         {
