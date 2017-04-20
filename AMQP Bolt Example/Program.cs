@@ -13,7 +13,7 @@ namespace ConsoleApp2
 {
     class Program
     {
-        static Random rand = new Random(); //for the example workers
+        static Random rand = new Random(); // For random sleep time to test parallel example workers
         
         static void Main(string[] args)
         {
@@ -21,7 +21,7 @@ namespace ConsoleApp2
             var secondCmd = "addOrder";
             var ip = "192.168.1.14";
 
-            //prepare the mq connection to be passed to the workers
+            // Prepare the MQ connection to be passed to the workers
             var factory = new ConnectionFactory() { Uri = "amqp://dev:dev@" + ip };
             using (var connection = factory.CreateConnection())
             {
@@ -31,7 +31,7 @@ namespace ConsoleApp2
                 Thread.Sleep(Timeout.Infinite);
             }
         }
-        // myWorker is a example worker to help demonstrate the boltSDK-dotnet
+        // myWorker is an example worker to help demonstrate the boltSDK-dotnet
         public static JObject myWorker(JObject payload)
         {
             var message = payload.SelectToken("initial_input.message").ToString();
@@ -44,7 +44,7 @@ namespace ConsoleApp2
             Console.WriteLine(payload["return_value"]);
             return payload;
         }
-        // mySecondWorker is a example worker to help demonstrate the boltSDK-dotnet
+        // mySecondWorker is an example worker to help demonstrate the boltSDK-dotnet
         public static JObject mySecondWorker(JObject payload)
         {
             var message = payload.SelectToken("initial_input.message").ToString();
